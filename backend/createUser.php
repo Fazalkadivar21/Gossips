@@ -30,7 +30,6 @@ function createUser($username, $email, $password, $profilePicture) {
     $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
     // Handle profile picture upload
-    // Handle profile picture upload
     $filePath = null;
     if ($profilePicture['error'] === 0) {
         $allowedTypes = ['image/jpeg', 'image/png'];
@@ -44,22 +43,13 @@ function createUser($username, $email, $password, $profilePicture) {
             return json_encode(["status" => "error", "message" => "File size exceeds 5MB!"]);
         }
 
-        // Ensure the uploads directory exists
-        if (!is_dir('uploads')) {
-            mkdir('uploads', 0777, true);
-        }
-
         // Generate unique filename and save the file
         $fileName = uniqid() . '_' . basename($profilePicture['name']);
         $filePath = 'uploads/' . $fileName;
 
         if (!move_uploaded_file($profilePicture['tmp_name'], $filePath)) {
-            error_log("Failed to move uploaded file: " . $profilePicture['tmp_name']);
             return json_encode(["status" => "error", "message" => "Error uploading the profile picture."]);
         }
-    } else {
-        error_log("File upload error: " . $profilePicture['error']);
-        return json_encode(["status" => "error", "message" => "File upload error!"]);
     }
 
     // Insert user into database
@@ -94,3 +84,4 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     echo $response;
 }
 ?>
+
