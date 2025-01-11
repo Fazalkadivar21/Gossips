@@ -10,60 +10,40 @@ export const Chat: React.FC = () => {
   const { user } = useAuth();
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    const loadChatList = async () => {
-      try {
-        const formData = new FormData();
-        formData.append('user_id', user?.id || '');
-
-        const { data } = await api.post('/backend/loadChatList.php', formData);
-        
-        if (Array.isArray(data)) {
-          setUsers(data.map((chat: any) => ({
-            id: chat.other_user_id,
-            username: chat.other_user_username,
-            email: '',
-            isOnline: true,
-            avatar: chat.profile_picture,
-            lastSeen: new Date(chat.last_message_time)
-          })));
-        }
-      } catch (error) {
-        console.error('Failed to load chat list:', error);
-      }
-    };
-
-    if (user) {
-      loadChatList();
-    }
-  }, [user]);
-
+  // Fetch messages when user selects a chat
   useEffect(() => {
     const loadMessages = async () => {
       if (!user || !selectedUser) return;
+      setLoading(true);
 
       try {
         const formData = new FormData();
-        formData.append('user_id', user.id);
-        formData.append('other_user_id', selectedUser.id);
+        formData.append('test1', user.id);
+        formData.append('test2', selectedUser.id);
 
         const { data } = await api.post('/backend/loadChat.php', formData);
         
         if (Array.isArray(data)) {
-          setMessages(data.map((msg: any) => ({
+          const formattedMessages = data.map((msg: any) => ({
             id: msg.id,
             senderId: msg.sender_id,
             receiverId: msg.receiver_id,
             content: msg.message,
             timestamp: new Date(msg.timestamp),
-            type: msg.type,
+            type: msg.type || 'text',
             fileUrl: msg.file_path
-          })));
+          }));
+          setMessages(formattedMessages);
+        } else {
+          setMessages([]);
         }
       } catch (error) {
         console.error('Failed to load messages:', error);
+        setMessages([]);
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -83,7 +63,7 @@ export const Chat: React.FC = () => {
         formData.append('file', file);
       }
 
-      const { data } = await api.post('/backend/sendMessage.php', formData);
+      const { data } = await api.post('backend/sendMessage.php', formData);
 
       if (data.success) {
         const newMessage: Message = {
@@ -107,15 +87,7 @@ export const Chat: React.FC = () => {
       <Header />
       <div className="flex flex-1 overflow-hidden">
         <div className="w-[400px] flex flex-col bg-white dark:bg-discord-dark-800 border-r border-gray-200 dark:border-discord-dark-900">
-          <div className="p-3 bg-gray-100 dark:bg-discord-dark-800 border-b border-gray-200 dark:border-discord-dark-900">
-            <input
-              type="text"
-              placeholder="Search or start new chat"
-              className="w-full p-2 bg-white dark:bg-discord-dark-600 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-discord-primary dark:focus:ring-discord-primary placeholder-gray-500 dark:placeholder-gray-400"
-            />
-          </div>
           <UserList
-            users={users}
             selectedUser={selectedUser}
             onSelectUser={setSelectedUser}
           />
@@ -126,6 +98,7 @@ export const Chat: React.FC = () => {
             selectedUser={selectedUser}
             messages={messages}
             onSendMessage={handleSendMessage}
+            loading={loading}
           />
         </div>
       </div>

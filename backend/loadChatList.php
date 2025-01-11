@@ -4,48 +4,45 @@ include_once 'db_connection.php';
 
 // Function to load the chat list for a user
 function loadChatList($userId) {
-    global $conn; // Access the connection variable
+    global $pdo; // Access the PDO connection variable
 
-    // Prepare SQL query to get distinct conversations for the user
-    $query = "
-        SELECT 
-            IF(sender_id = ?, receiver_id, sender_id) AS other_user_id,
-            IF(sender_id = ?, receiver_id, sender_id) AS other_user_username,
-            messages.message,
-            messages.timestamp,
-            users.username AS other_user_username,
-            users.profile_picture AS other_user_profile_picture
-        FROM messages
-        JOIN users ON users.id = IF(sender_id = ?, receiver_id, sender_id)
-        WHERE sender_id = ? OR receiver_id = ?
-        ORDER BY messages.timestamp DESC
-        LIMIT 50
-    ";
+    try {
+        // Prepare SQL query to get distinct conversations for the user
+        $query = "
+            SELECT 
+                IF(sender_id = :userId, receiver_id, sender_id) AS other_user_id,
+                IF(sender_id = :userId, receiver_id, sender_id) AS other_user_username,
+                messages.message,
+                messages.timestamp,
+                users.username AS other_user_username,
+                users.profile_picture AS other_user_profile_picture
+            FROM messages
+            JOIN users ON users.id = IF(sender_id = :userId, receiver_id, sender_id)
+            WHERE sender_id = :userId OR receiver_id = :userId
+            ORDER BY messages.timestamp DESC
+            LIMIT 50
+        ";
 
-    // Prepare and bind parameters
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("iiiiii", $userId, $userId, $userId, $userId, $userId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+        // Prepare the statement
+        $stmt = $pdo->prepare($query);
 
-    // Check if there are any chats
-    if ($result->num_rows > 0) {
-        $chats = [];
-        
-        // Fetch chat data and add it to the response array
-        while ($chat = $result->fetch_assoc()) {
-            $chats[] = [
-                'other_user_id' => $chat['other_user_id'],
-                'other_user_username' => $chat['other_user_username'],
-                'last_message' => $chat['message'],
-                'last_message_time' => $chat['timestamp'],
-                'profile_picture' => $chat['other_user_profile_picture']
-            ];
+        // Bind the userId parameter
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+
+        // Execute the query
+        $stmt->execute();
+
+        // Fetch chats
+        $chats = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Check if there are any chats
+        if ($chats) {
+            return $chats;
+        } else {
+            return "No chats found.";
         }
-
-        return $chats;
-    } else {
-        return "No chats found.";
+    } catch (PDOException $e) {
+        return "Error: " . $e->getMessage();
     }
 }
 

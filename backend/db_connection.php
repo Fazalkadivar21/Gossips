@@ -16,19 +16,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
     exit;  // Preflight request, just exit without further processing
 }
 
-$host = "localhost";
-$username = "root";
-$password = "";
-$database = "justChat";
-$port = 3306;
 
-// Create connection
-$conn = mysqli_connect($host, $username, $password,$database,$port);
+$dsn = 'mysql:host=localhost;dbname=justchat;charset=utf8mb4';
+$username = 'root';
+$password = 'h!arch21';
 
-// Check connection
-/*if ($conn->connect_error) {*/
-/*    die("Connection failed: " . $conn->connect_error);*/
-/*}*/
-/**/
-/*echo "Connected successfully";*/
-?> 
+try {
+    // Create a new PDO instance
+    $pdo = new PDO($dsn, $username, $password);
+
+    // Set error mode to exception for better debugging
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+
+    /*echo "Connected successfully to the database using PDO!";*/
+} catch (PDOException $e) {
+    // Catch and display connection error
+    echo "Connection failed: " . $e->getMessage();
+}
+?>
+

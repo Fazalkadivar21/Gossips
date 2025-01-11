@@ -4,50 +4,52 @@ include_once 'db_connection.php';
 
 // Function to authenticate user
 function authenticateUser($email, $password) {
-    global $conn; // Access the connection variable
+    global $pdo; // Access the PDO connection variable
 
     // Validate input
     if (empty($email) || empty($password)) {
-        return "Email and password are required!";
+        return ["success" => false, "message" => "Email and password are required!"];
     }
 
-    // Prepare SQL query to fetch user by email
-    $query = "SELECT id, username, password_hash, is_online FROM users WHERE email = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("s", $email);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    try {
+        // Prepare SQL query to fetch user by email
+        $query = "SELECT id, username, password_hash, is_online FROM users WHERE email = :email";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([':email' => $email]);
 
-    // Check if user exists
-    if ($result->num_rows === 0) {
-        return "Invalid email or password!";
-    }
+        // Check if user exists
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        if (!$user) {
+            return ["success" => false, "message" => "Invalid email or password!"];
+        }
 
-    // Fetch user data
-    $user = $result->fetch_assoc();
+        // Verify password
+        if (!password_verify($password, $user['password_hash'])) {
+            return ["success" => false, "message" => "Invalid email or password!"];
+        }
 
-    // Verify password
-    if (!password_verify($password, $user['password_hash'])) {
-        return "Invalid email or password!";
-    }
+        // Generate session token
+        $token = bin2hex(random_bytes(32)); // Generate a 64-character token
+        $userId = $user['id'];
 
-    // Generate session token
-    $token = bin2hex(random_bytes(32)); // Generate a 64-character token
-    $userId = $user['id'];
+        // Store session token in the database
+        $tokenQuery = "INSERT INTO sessions (user_id, token, expires_at) VALUES (:user_id, :token, :expires_at)";
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Token expires in 1 hour
+        $tokenStmt = $pdo->prepare($tokenQuery);
+        $tokenStmt->execute([
+            ':user_id' => $userId,
+            ':token' => $token,
+            ':expires_at' => $expiresAt
+        ]);
 
-    // Store session token in the database
-    $tokenQuery = "INSERT INTO sessions (user_id, token, expires_at) VALUES (?, ?, ?)";
-    $expiresAt = date('Y-m-d H:i:s', strtotime('+1 hour')); // Token expires in 1 hour
-    $stmt = $conn->prepare($tokenQuery);
-    $stmt->bind_param("sss", $userId, $token, $expiresAt);
-
-    if ($stmt->execute()) {
         // Update user online status
-        $updateStatusQuery = "UPDATE users SET is_online = TRUE, last_active = ? WHERE id = ?";
+        $updateStatusQuery = "UPDATE users SET is_online = TRUE, last_active = :last_active WHERE id = :id";
         $lastActive = date('Y-m-d H:i:s');
-        $stmt = $conn->prepare($updateStatusQuery);
-        $stmt->bind_param("si", $lastActive, $userId);
-        $stmt->execute();
+        $updateStmt = $pdo->prepare($updateStatusQuery);
+        $updateStmt->execute([
+            ':last_active' => $lastActive,
+            ':id' => $userId
+        ]);
 
         // Return success response with token
         return [
@@ -56,8 +58,8 @@ function authenticateUser($email, $password) {
             "username" => $user['username'],
             "user_id" => $userId
         ];
-    } else {
-        return "Error generating session!";
+    } catch (PDOException $e) {
+        return ["success" => false, "message" => "Error: " . $e->getMessage()];
     }
 }
 

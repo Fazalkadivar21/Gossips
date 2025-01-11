@@ -13,12 +13,20 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
     <div className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
       <div className={`message-bubble ${isOwn ? 'sent' : 'received'}`}>
         {message.type === 'text' && <p>{message.content}</p>}
-        {message.type === 'image' && (
-          <img src={message.fileUrl} alt="Shared" className="max-w-full rounded" />
+        {message.type === 'image' && message.fileUrl && (
+          <img 
+            src={`http://localhost:5000/${message.fileUrl}`} 
+            alt="Shared" 
+            className="max-w-full rounded"
+            onError={(e) => {
+              const target = e.target as HTMLImageElement;
+              target.src = 'https://via.placeholder.com/300x200?text=Image+Not+Found';
+            }}
+          />
         )}
-        {message.type === 'file' && (
+        {message.type === 'file' && message.fileUrl && (
           <a
-            href={message.fileUrl}
+            href={`http://localhost:5000/${message.fileUrl}`}
             className="text-emerald-700 underline"
             target="_blank"
             rel="noopener noreferrer"
@@ -37,4 +45,4 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
       </div>
     </div>
   );
-}
+};

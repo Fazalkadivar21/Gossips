@@ -4,54 +4,51 @@ include_once 'db_connection.php';
 
 // Function to load messages between two users
 function loadChat($userId, $otherUserId, $limit = 50, $offset = 0) {
-    global $conn; // Access the connection variable
+    global $pdo; // Access the PDO connection variable
 
-    // Prepare SQL query to get messages between the two users
-    $query = "
-        SELECT 
-            messages.id,
-            messages.sender_id,
-            messages.receiver_id,
-            messages.message,
-            messages.type,
-            messages.file_id,
-            messages.timestamp,
-            files_shared.file_path
-        FROM messages
-        LEFT JOIN files_shared ON messages.file_id = files_shared.id
-        WHERE (messages.sender_id = ? AND messages.receiver_id = ?) 
-            OR (messages.sender_id = ? AND messages.receiver_id = ?)
-        ORDER BY messages.timestamp ASC
-        LIMIT ? OFFSET ?
-    ";
+    try {
+        // Prepare SQL query to get messages between the two users
+        $query = "
+            SELECT 
+                messages.id,
+                messages.sender_id,
+                messages.receiver_id,
+                messages.message,
+                messages.type,
+                messages.file_id,
+                messages.timestamp,
+                files_shared.file_path
+            FROM messages
+            LEFT JOIN files_shared ON messages.file_id = files_shared.id
+            WHERE (messages.sender_id = :userId AND messages.receiver_id = :otherUserId) 
+                OR (messages.sender_id = :otherUserId AND messages.receiver_id = :userId)
+            ORDER BY messages.timestamp ASC
+            LIMIT :limit OFFSET :offset
+        ";
 
-    // Prepare and bind parameters
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("iiiiii", $userId, $otherUserId, $otherUserId, $userId, $limit, $offset);
-    $stmt->execute();
-    $result = $stmt->get_result();
+        // Prepare the statement
+        $stmt = $pdo->prepare($query);
 
-    // Check if there are any messages
-    if ($result->num_rows > 0) {
-        $messages = [];
-        
-        // Fetch message data and add it to the response array
-        while ($message = $result->fetch_assoc()) {
-            $messages[] = [
-                'id' => $message['id'],
-                'sender_id' => $message['sender_id'],
-                'receiver_id' => $message['receiver_id'],
-                'message' => $message['message'],
-                'type' => $message['type'],
-                'file_id' => $message['file_id'],
-                'timestamp' => $message['timestamp'],
-                'file_path' => $message['file_path']
-            ];
+        // Bind the parameters
+        $stmt->bindParam(':userId', $userId, PDO::PARAM_INT);
+        $stmt->bindParam(':otherUserId', $otherUserId, PDO::PARAM_INT);
+        $stmt->bindParam(':limit', $limit, PDO::PARAM_INT);
+        $stmt->bindParam(':offset', $offset, PDO::PARAM_INT);
+
+        // Execute the query
+        $stmt->execute();
+
+        // Fetch messages
+        $messages = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        // Check if there are any messages
+        if ($messages) {
+            return $messages;
+        } else {
+            return "No messages found.";
         }
-
-        return $messages;
-    } else {
-        return "No messages found.";
+    } catch (PDOException $e) {
+        return "Error: " . $e->getMessage();
     }
 }
 

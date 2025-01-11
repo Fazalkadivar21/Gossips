@@ -4,23 +4,32 @@ include_once 'db_connection.php';
 
 // Function to send a message
 function sendMessage($senderId, $receiverId, $content, $type = 'text', $fileId = null) {
-    global $conn; // Access the connection variable
+    global $pdo; // Access the PDO connection variable
 
-    // Prepare SQL query to insert the new message
-    $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp, is_read) 
-              VALUES (?, ?, ?, ?, ?, NOW(), 0)";
+    try {
+        // Prepare SQL query to insert the new message
+        $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp, is_read) 
+                  VALUES (:senderId, :receiverId, :content, :type, :fileId, NOW(), 0)";
 
-    // Prepare the statement
-    $stmt = $conn->prepare($query);
-    
-    // Bind parameters
-    $stmt->bind_param("iisss", $senderId, $receiverId, $content, $type, $fileId);
+        // Prepare the statement
+        $stmt = $pdo->prepare($query);
 
-    // Execute the query
-    if ($stmt->execute()) {
-        return "Message sent successfully.";
-    } else {
-        return "Failed to send message.";
+        // Bind parameters
+        $stmt->bindParam(':senderId', $senderId, PDO::PARAM_INT);
+        $stmt->bindParam(':receiverId', $receiverId, PDO::PARAM_INT);
+        $stmt->bindParam(':content', $content, PDO::PARAM_STR);
+        $stmt->bindParam(':type', $type, PDO::PARAM_STR);
+        $stmt->bindParam(':fileId', $fileId, PDO::PARAM_INT);
+
+        // Execute the query
+        if ($stmt->execute()) {
+            return "Message sent successfully.";
+        } else {
+            return "Failed to send message.";
+        }
+    } catch (PDOException $e) {
+        // Return the error message
+        return "Error: " . $e->getMessage();
     }
 }
 

@@ -4,33 +4,35 @@ include_once 'db_connection.php';
 
 // Function to delete a message by its ID
 function deleteMessage($messageId, $userId) {
-    global $conn; // Access the connection variable
+    global $pdo; // Access the PDO connection variable
 
-    // Prepare SQL query to check if the message exists and belongs to the user
-    $query = "SELECT sender_id FROM messages WHERE id = ?";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $messageId);
-    $stmt->execute();
-    $result = $stmt->get_result();
+    try {
+        // Check if the message exists and belongs to the user
+        $query = "SELECT sender_id FROM messages WHERE id = :message_id";
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([':message_id' => $messageId]);
+        $message = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    // Check if the message exists and if the user is the sender
-    if ($result->num_rows > 0) {
-        $message = $result->fetch_assoc();
-        if ($message['sender_id'] == $userId) {
-            // Message belongs to the user, delete it
-            $deleteQuery = "DELETE FROM messages WHERE id = ?";
-            $deleteStmt = $conn->prepare($deleteQuery);
-            $deleteStmt->bind_param("i", $messageId);
-            if ($deleteStmt->execute()) {
-                return "Message deleted successfully.";
+        if ($message) {
+            if ($message['sender_id'] == $userId) {
+                // Message belongs to the user, delete it
+                $deleteQuery = "DELETE FROM messages WHERE id = :message_id";
+                $deleteStmt = $pdo->prepare($deleteQuery);
+                $deleteStmt->execute([':message_id' => $messageId]);
+
+                if ($deleteStmt->rowCount() > 0) {
+                    return "Message deleted successfully.";
+                } else {
+                    return "Failed to delete message.";
+                }
             } else {
-                return "Failed to delete message.";
+                return "You can only delete your own messages.";
             }
         } else {
-            return "You can only delete your own messages.";
+            return "Message not found.";
         }
-    } else {
-        return "Message not found.";
+    } catch (PDOException $e) {
+        return "Error: " . $e->getMessage();
     }
 }
 
