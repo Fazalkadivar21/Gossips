@@ -9,23 +9,20 @@ function loadChat($userId, $otherUserId, $limit = 50, $offset = 0) {
     try {
         // Prepare SQL query to get messages between the two users
         $query = "
-            SELECT 
-                messages.id,
-                messages.sender_id,
-                messages.receiver_id,
-                messages.message,
-                messages.type,
-                messages.file_id,
-                messages.timestamp,
-                files_shared.file_path
-            FROM messages
-            LEFT JOIN files_shared ON messages.file_id = files_shared.id
-            WHERE (messages.sender_id = :userId AND messages.receiver_id = :otherUserId) 
-                OR (messages.sender_id = :otherUserId AND messages.receiver_id = :userId)
-            ORDER BY messages.timestamp ASC
-            LIMIT :limit OFFSET :offset
-        ";
-
+    SELECT 
+        messages.id,
+        messages.sender_id,
+        messages.receiver_id,
+        messages.message,
+        messages.type,
+        messages.file_id,
+        messages.timestamp
+    FROM messages
+    WHERE (messages.sender_id = :userId AND messages.receiver_id = :otherUserId) 
+        OR (messages.sender_id = :otherUserId AND messages.receiver_id = :userId)
+    ORDER BY messages.timestamp ASC
+    LIMIT :limit OFFSET :offset
+";
         // Prepare the statement
         $stmt = $pdo->prepare($query);
 

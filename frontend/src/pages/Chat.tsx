@@ -12,43 +12,47 @@ export const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loading, setLoading] = useState(false);
 
-  // Fetch messages when user selects a chat
-  useEffect(() => {
-    const loadMessages = async () => {
-      if (!user || !selectedUser) return;
-      setLoading(true);
+  // Load messages function that will be called repeatedly
+  const loadMessages = async () => {
+    if (!user || !selectedUser) return;
 
-      try {
-        const formData = new FormData();
-        formData.append('test1', user.id);
-        formData.append('test2', selectedUser.id);
+    try {
+      const formData = new FormData();
+      formData.append('user_id', user.id);
+      formData.append('other_user_id', selectedUser.id);
 
-        const { data } = await api.post('/backend/loadChat.php', formData);
-        
-        if (Array.isArray(data)) {
-          const formattedMessages = data.map((msg: any) => ({
-            id: msg.id,
-            senderId: msg.sender_id,
-            receiverId: msg.receiver_id,
-            content: msg.message,
-            timestamp: new Date(msg.timestamp),
-            type: msg.type || 'text',
-            fileUrl: msg.file_path
-          }));
-          setMessages(formattedMessages);
-        } else {
-          setMessages([]);
-        }
-      } catch (error) {
-        console.error('Failed to load messages:', error);
-        setMessages([]);
-      } finally {
-        setLoading(false);
+      const { data } = await api.post('/backend/loadChat.php', formData);
+      
+      if (Array.isArray(data)) {
+        const formattedMessages = data.map((msg: any) => ({
+          id: msg.id,
+          senderId: msg.sender_id,
+          receiverId: msg.receiver_id,
+          content: msg.message,
+          timestamp: new Date(msg.timestamp),
+          type: msg.type || 'text',
+          fileUrl: msg.file_path
+        }));
+        setMessages(formattedMessages);
       }
-    };
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+    }
+  };
 
-    loadMessages();
-  }, [user, selectedUser]);
+  // Initial load and polling setup
+  useEffect(() => {
+    if (!selectedUser) return;
+    
+    // Initial load
+    setLoading(true);
+    loadMessages().finally(() => setLoading(false));
+
+    // Set up polling interval
+    const pollInterval = setInterval(loadMessages, 1000); // Poll every 3 seconds
+
+    return () => clearInterval(pollInterval);
+  }, [selectedUser]);
 
   const handleSendMessage = async (content: string, type: 'text' | 'image' | 'file', file?: File) => {
     if (!user || !selectedUser) return;
@@ -63,19 +67,11 @@ export const Chat: React.FC = () => {
         formData.append('file', file);
       }
 
-      const { data } = await api.post('backend/sendMessage.php', formData);
+      const { data } = await api.post('/backend/sendMessage.php', formData);
 
       if (data.success) {
-        const newMessage: Message = {
-          id: data.message_id,
-          senderId: user.id,
-          receiverId: selectedUser.id,
-          content,
-          timestamp: new Date(),
-          type,
-          fileUrl: data.file_url
-        };
-        setMessages(prev => [...prev, newMessage]);
+        // After successful send, load messages again to get the latest state
+        loadMessages();
       }
     } catch (error) {
       console.error('Failed to send message:', error);
