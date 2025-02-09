@@ -4,6 +4,7 @@ import { formatLastSeen } from '../utils/dateUtils';
 import { Search } from 'lucide-react';
 import api from '../lib/axios';
 import { useAuth } from '../contexts/AuthContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface UserListProps {
   selectedUser: User | null;
@@ -37,9 +38,9 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
                 id: chat.other_user_id,
                 username: chat.other_user_username,
                 email: '',
-                isOnline: true,
-                avatar: chat.profile_picture,
-                lastSeen: new Date(chat.last_message_time)
+                isOnline: chat.is_online,
+                avatar: chat.profile_picture ? `http://localhost:5000/${chat.profile_picture}` : null,
+                lastSeen: new Date(chat.last_active || chat.last_message_time)
               });
             }
           });
@@ -52,6 +53,10 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
     };
 
     fetchChatList();
+    
+    // Poll for updates every 30 seconds
+    const interval = setInterval(fetchChatList, 30000);
+    return () => clearInterval(interval);
   }, [currentUser]);
 
   // Search users
@@ -64,7 +69,7 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
       formData.append('query', query);
       formData.append('user_id', currentUser.id);
 
-      const { data } = await api.post('/backend/searchUser.php', formData);
+      const { data } = await api.post('/search_users.php', formData);
       
       if (Array.isArray(data)) {
         // Create a Map to store unique users by ID
@@ -77,7 +82,7 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
               username: user.username,
               email: '',
               isOnline: user.is_online,
-              avatar: user.profile_picture,
+              avatar: user.profile_picture ? `http://localhost:5000/${user.profile_picture}` : null,
               lastSeen: new Date(user.last_active)
             });
           }
@@ -124,45 +129,68 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
       </div>
       
       <div className="flex-1 overflow-y-auto">
-        {users.length === 0 ? (
-          <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-            {searchQuery ? 'No users found' : 'No recent chats'}
-          </div>
-        ) : (
-          users.map((user) => (
-            <div
-              key={user.id}
-              onClick={() => onSelectUser(user)}
-              className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-discord-dark-700 border-b dark:border-discord-dark-900 ${
-                selectedUser?.id === user.id ? 'bg-gray-50 dark:bg-discord-dark-700' : ''
-              }`}
+        <AnimatePresence>
+          {users.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="p-4 text-center text-gray-500 dark:text-gray-400"
             >
-              <div className="flex items-center space-x-3">
-                <div className="relative">
-                  <img
-                    src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
-                    alt={user.username}
-                    className="w-12 h-12 rounded-full"
-                  />
-                  {user.isOnline && (
-                    <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-discord-dark-800" />
-                  )}
-                </div>
-                <div className="flex-1">
-                  <div className="flex justify-between items-start">
-                    <h3 className="font-semibold dark:text-gray-100">{user.username}</h3>
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {formatLastSeen(user.lastSeen)}
-                    </span>
+              {searchQuery ? 'No users found' : 'No recent chats'}
+            </motion.div>
+          ) : (
+            users.map((user) => (
+              <motion.div
+                key={user.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{
+                  type: "spring",
+                  stiffness: 500,
+                  damping: 30
+                }}
+                onClick={() => onSelectUser(user)}
+                className={`p-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-discord-dark-700 border-b dark:border-discord-dark-900 ${
+                  selectedUser?.id === user.id ? 'bg-gray-50 dark:bg-discord-dark-700' : ''
+                }`}
+              >
+                <div className="flex items-center space-x-3">
+                  <div className="relative">
+                    <motion.img
+                      initial={{ scale: 0.8 }}
+                      animate={{ scale: 1 }}
+                      src={user.avatar || `https://ui-avatars.com/api/?name=${user.username}&background=random`}
+                      alt={user.username}
+                      className="w-12 h-12 rounded-full object-cover"
+                    />
+                    {user.isOnline && (
+                      <motion.span
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-discord-dark-800"
+                      />
+                    )}
                   </div>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {user.isOnline ? 'online' : 'last seen recently'}
-                  </p>
+                  <div className="flex-1">
+                    <div className="flex justify-between items-start">
+                      <h3 className="font-semibold dark:text-gray-100">{user.username}</h3>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">
+                        {formatLastSeen(user.lastSeen)}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                      {user.isOnline ? 'online' : 'last seen recently'}
+                    </p>``
+                  </div>
                 </div>
-              </div>
-            </div>
-          ))
-        )}
+              </motion.div>
+            ))
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Message, User } from '../types';
 import { MessageBubble } from './MessageBubble';
 import { MessageInput } from './MessageInput';
@@ -20,11 +20,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   loading,
 }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Handle scroll events to determine if we should auto-scroll
+  const handleScroll = () => {
+    if (!chatContainerRef.current) return;
+    
+    const { scrollTop, scrollHeight, clientHeight } = chatContainerRef.current;
+    const isNearBottom = scrollHeight - (scrollTop + clientHeight) < 100;
+    setShouldAutoScroll(isNearBottom);
+  };
+
+  // Auto-scroll to bottom when new messages arrive (if shouldAutoScroll is true)
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (shouldAutoScroll && messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, shouldAutoScroll]);
 
   if (!selectedUser) {
     return (
@@ -40,6 +53,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     <div className="flex-1 flex flex-col h-full">
       <ChatHeader user={selectedUser} />
       <div 
+        ref={chatContainerRef}
+        onScroll={handleScroll}
         className="flex-1 overflow-y-auto p-4 space-y-2 bg-gray-50 dark:bg-discord-dark-700"
       >
         {loading ? (
