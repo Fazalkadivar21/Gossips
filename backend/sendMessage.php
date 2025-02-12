@@ -3,51 +3,86 @@
 include_once 'db_connection.php';
 
 // Function to send a message
-function sendMessage($senderId, $receiverId, $content, $type = 'text', $fileId = null) {
-    global $pdo; // Access the PDO connection variable
+function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = null) {
+    global $pdo;
 
     try {
-        // Prepare SQL query to insert the new message
-        $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp, is_read) 
-                  VALUES (:senderId, :receiverId, :content, :type, :fileId, NOW(), 0)";
+        $fileId = null;
+        $filePath = null;
 
-        // Prepare the statement
-        $stmt = $pdo->prepare($query);
+        // Handle file upload if present
+        if ($file && $file['error'] === 0) {
+            // Create uploads directory if it doesn't exist
+            if (!file_exists('uploads')) {
+                mkdir('uploads', 0777, true);
+            }
 
-        // Bind parameters
-        $stmt->bindParam(':senderId', $senderId, PDO::PARAM_INT);
-        $stmt->bindParam(':receiverId', $receiverId, PDO::PARAM_INT);
-        $stmt->bindParam(':content', $content, PDO::PARAM_STR);
-        $stmt->bindParam(':type', $type, PDO::PARAM_STR);
-        $stmt->bindParam(':fileId', $fileId, PDO::PARAM_INT);
+            $fileName = uniqid() . '_' . basename($file['name']);
+            $uploadPath = 'uploads/' . $fileName;
 
-        // Execute the query
-        if ($stmt->execute()) {
-            return "Message sent successfully.";
-        } else {
-            return "Failed to send message.";
+            if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
+                // Insert file record
+                $fileQuery = "INSERT INTO files_shared (file_path, uploaded_by) VALUES (:filePath, :uploadedBy)";
+                $fileStmt = $pdo->prepare($fileQuery);
+                $fileStmt->execute([
+                    ':filePath' => $uploadPath,
+                    ':uploadedBy' => $senderId
+                ]);
+                $fileId = $pdo->lastInsertId();
+                $filePath = $uploadPath;
+            }
         }
+
+        // Insert message
+        $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp) 
+                 VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
+
+        $stmt = $pdo->prepare($query);
+        $stmt->execute([
+            ':senderId' => $senderId,
+            ':receiverId' => $receiverId,
+            ':message' => $message,
+            ':type' => $type,
+            ':fileId' => $fileId
+        ]);
+
+        $messageId = $pdo->lastInsertId();
+
+        // Return success response with message details
+        return [
+            'success' => true,
+            'message' => 'Message sent successfully',
+            'data' => [
+                'id' => $messageId,
+                'sender_id' => $senderId,
+                'receiver_id' => $receiverId,
+                'message' => $message,
+                'type' => $type,
+                'file_path' => $filePath,
+                'timestamp' => date('Y-m-d H:i:s')
+            ]
+        ];
     } catch (PDOException $e) {
-        // Return the error message
-        return "Error: " . $e->getMessage();
+        return [
+            'success' => false,
+            'message' => 'Error: ' . $e->getMessage()
+        ];
     }
 }
 
-// Check if the request method is POST (to send data)
+// Check if request is POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    // Get data from the POST request
     $senderId = $_POST['sender_id'];
     $receiverId = $_POST['receiver_id'];
-    $content = $_POST['content'];
-    $type = $_POST['type']; // 'text', 'media', 'file'
-    $fileId = isset($_POST['file_id']) ? $_POST['file_id'] : null; // For file/media messages
+    $message = $_POST['message'];
+    $type = $_POST['type'] ?? 'text';
+    $file = isset($_FILES['file']) ? $_FILES['file'] : null;
 
     // Call sendMessage function
-    $response = sendMessage($senderId, $receiverId, $content, $type, $fileId);
+    $response = sendMessage($senderId, $receiverId, $message, $type, $file);
 
-    // Return the response as JSON (for API use)
+    // Return response as JSON
     header('Content-Type: application/json');
-    echo json_encode(['message' => $response]);
+    echo json_encode($response);
 }
 ?>
-
