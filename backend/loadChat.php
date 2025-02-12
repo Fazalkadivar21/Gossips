@@ -3,7 +3,7 @@
 include_once 'db_connection.php';
 
 // Function to load messages between two users
-function loadChat($userId, $otherUserId, $limit = 50, $offset = 0) {
+function loadChat($userId, $otherUserId, $limit = 5000, $offset = 0) {
     global $pdo; // Access the PDO connection variable
 
     try {
@@ -54,7 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Get the userId and otherUserId from POST data
     $userId = $_POST['user_id'];
     $otherUserId = $_POST['other_user_id'];
-    $limit = isset($_POST['limit']) ? $_POST['limit'] : 50; // Default limit
+    $limit = isset($_POST['limit']) ? $_POST['limit'] : 5000; // Default limit
     $offset = isset($_POST['offset']) ? $_POST['offset'] : 0; // Default offset
 
     // Call loadChat function
