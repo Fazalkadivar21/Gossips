@@ -21,29 +21,46 @@ function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = n
             $uploadPath = 'uploads/' . $fileName;
 
             if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                // Insert file record
-                $fileQuery = "INSERT INTO files_shared (file_path, uploaded_by) VALUES (:filePath, :uploadedBy)";
+                // Insert file record first
+                $fileQuery = "INSERT INTO files_shared (uploader_id, file_name, file_type, file_size, file_url) VALUES (:uploaderId, :fileName, :fileType, :fileSize, :fileUrl)";
+                
                 $fileStmt = $pdo->prepare($fileQuery);
                 $fileStmt->execute([
-                    ':filePath' => $uploadPath,
-                    ':uploadedBy' => $senderId
+                    ':uploaderId' => $senderId,
+                    ':fileName'   => $fileName,
+                    ':fileType'   => $file['type'],
+                    ':fileSize'   => $file['size'],
+                    ':fileUrl'    => $uploadPath
                 ]);
+            
+                // Get the inserted file's ID
                 $fileId = $pdo->lastInsertId();
-                $filePath = $uploadPath;
+            
+                // Now insert into messages with the correct file_id
+                $messageQuery = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp) VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
+            
+                $messageStmt = $pdo->prepare($messageQuery);
+                $messageStmt->execute([
+                    ':senderId'   => $senderId,
+                    ':receiverId' => $receiverId,
+                    ':message'    => $fileName, 
+                    ':type'       => 'file',  
+                    ':fileId'     => $fileId  
+                ]);
             }
+            
         }
 
         // Insert message
         $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp) 
                  VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
-
-        $stmt = $pdo->prepare($query);
+        $stmt = $pdo->prepare($messageQuery);
         $stmt->execute([
-            ':senderId' => $senderId,
+            ':senderId'   => $senderId,
             ':receiverId' => $receiverId,
-            ':message' => $message,
-            ':type' => $type,
-            ':fileId' => $fileId
+            ':message'    => $message, 
+            ':type'       => 'file',  
+            ':fileId'     => $fileId  
         ]);
 
         $messageId = $pdo->lastInsertId();

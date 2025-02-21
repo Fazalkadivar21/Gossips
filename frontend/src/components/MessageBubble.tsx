@@ -16,10 +16,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
         return (
           <div className="relative group">
             <img 
-              src={message.fileUrl ? `http://localhost:5000/${message.fileUrl}` : ''}
+              src={message.fileUrl ? `http://localhost:5000/backend/uploads/${message.content}` : ''}
               alt="Shared"
               className="max-w-[300px] max-h-[300px] rounded-lg object-cover cursor-pointer"
-              onClick={() => window.open(`http://localhost:5000/${message.fileUrl}`, '_blank')}
+              onClick={() => window.open(`http://localhost:5000/backend/uploads/${message.content}`, '_blank')}
               onError={(e) => {
                 const target = e.target as HTMLImageElement;
                 target.src = 'https://via.placeholder.com/300x200?text=Image+Not+Found';
@@ -37,7 +37,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({ message, isOwn }) 
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium truncate">{message.content}</p>
               <a
-                href={`http://localhost:5000/${message.fileUrl}`}
+                href={`http://localhost:5000/backend/uploads/${message.content}`}
                 className="text-xs text-discord-primary hover:underline"
                 target="_blank"
                 rel="noopener noreferrer"
