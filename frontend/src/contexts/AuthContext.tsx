@@ -41,7 +41,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           username: data.username,
           email: email,
           isOnline: true,
-          lastSeen: new Date()
+          lastSeen: new Date().toDateString(),
         };
         
         localStorage.setItem('authToken', data.token);
@@ -64,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (profilePicture) {
         formData.append('profile_picture', profilePicture);
       }
+      formData.append('last_active', new Date().toDateString());
 
       const { data } = await api.post('/backend/createUser.php', formData);
 

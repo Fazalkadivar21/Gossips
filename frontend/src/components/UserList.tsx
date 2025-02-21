@@ -11,6 +11,10 @@ interface UserListProps {
   onSelectUser: (user: User) => void;
 }
 
+const getProfilePicture = (user_id: any) => {
+  const pic = api.post('/backend/getProfilePicture.php', { user_id });
+  return pic;
+}
 export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +44,7 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
                 email: '',
                 isOnline: chat.is_online,
                 avatar: chat.profile_picture ? `http://localhost:5000/${chat.profile_picture}` : null,
-                lastSeen: new Date(chat.last_active || chat.last_message_time)
+                lastSeen: chat.timestamp
               });
             }
           });
@@ -54,8 +58,8 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
 
     fetchChatList();
     
-    // Poll for updates every 30 seconds
-    const interval = setInterval(fetchChatList, 30000);
+    // Poll for updates every 3 seconds
+    const interval = setInterval(fetchChatList, 3000);
     return () => clearInterval(interval);
   }, [currentUser]);
 
@@ -69,7 +73,7 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
       formData.append('query', query);
       formData.append('user_id', currentUser.id);
 
-      const { data } = await api.post('/search_users.php', formData);
+      const { data } = await api.post('/backend/searchUser.php', formData);
       
       if (Array.isArray(data)) {
         // Create a Map to store unique users by ID
@@ -179,7 +183,7 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
                     <div className="flex justify-between items-start">
                       <h3 className="font-semibold dark:text-gray-100">{user.username}</h3>
                       <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {formatLastSeen(user.lastSeen)}
+                        {formatLastSeen(new Date(user.lastSeen))}
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
