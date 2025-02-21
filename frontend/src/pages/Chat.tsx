@@ -23,7 +23,6 @@ export const Chat: React.FC = () => {
       formData.append('other_user_id', selectedUser.id);
 
       const response = await api.post('/backend/loadChat.php', formData);
-      console.log('Load messages response:', response.data); // Debug log
 
       // Check if response.data is a string (error message)
       if (typeof response.data === 'string') {
