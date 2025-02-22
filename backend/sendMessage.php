@@ -21,8 +21,9 @@ function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = n
             $uploadPath = 'uploads/' . $fileName;
 
             if (move_uploaded_file($file['tmp_name'], $uploadPath)) {
-                // Insert file record first
-                $fileQuery = "INSERT INTO files_shared (uploader_id, file_name, file_type, file_size, file_url) VALUES (:uploaderId, :fileName, :fileType, :fileSize, :fileUrl)";
+                // Insert file record
+                $fileQuery = "INSERT INTO files_shared (uploader_id, file_name, file_type, file_size, file_url) 
+                              VALUES (:uploaderId, :fileName, :fileType, :fileSize, :fileUrl)";
                 
                 $fileStmt = $pdo->prepare($fileQuery);
                 $fileStmt->execute([
@@ -35,32 +36,21 @@ function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = n
             
                 // Get the inserted file's ID
                 $fileId = $pdo->lastInsertId();
-            
-                // Now insert into messages with the correct file_id
-                $messageQuery = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp) VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
-            
-                $messageStmt = $pdo->prepare($messageQuery);
-                $messageStmt->execute([
-                    ':senderId'   => $senderId,
-                    ':receiverId' => $receiverId,
-                    ':message'    => $fileName, 
-                    ':type'       => 'file',  
-                    ':fileId'     => $fileId  
-                ]);
+                $filePath = $uploadPath;
             }
-            
         }
 
-        // Insert message
+        // Insert message (text or file)
         $query = "INSERT INTO messages (sender_id, receiver_id, message, type, file_id, timestamp) 
-                 VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
-        $stmt = $pdo->prepare($messageQuery);
+                  VALUES (:senderId, :receiverId, :message, :type, :fileId, NOW())";
+
+        $stmt = $pdo->prepare($query);
         $stmt->execute([
             ':senderId'   => $senderId,
             ':receiverId' => $receiverId,
-            ':message'    => $message, 
-            ':type'       => 'file',  
-            ':fileId'     => $fileId  
+            ':message'    => $file ? $fileName : $message,  // Keeps text messages intact
+            ':type'       => $file ? 'file' : $type,  // Set type as "file" if a file exists
+            ':fileId'     => $fileId
         ]);
 
         $messageId = $pdo->lastInsertId();
@@ -70,13 +60,13 @@ function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = n
             'success' => true,
             'message' => 'Message sent successfully',
             'data' => [
-                'id' => $messageId,
-                'sender_id' => $senderId,
-                'receiver_id' => $receiverId,
-                'message' => $message,
-                'type' => $type,
-                'file_path' => $filePath,
-                'timestamp' => date('Y-m-d H:i:s')
+                'id'         => $messageId,
+                'sender_id'  => $senderId,
+                'receiver_id'=> $receiverId,
+                'message'    => $message,
+                'type'       => $file ? 'file' : $type,
+                'file_path'  => $filePath,
+                'timestamp'  => date('Y-m-d H:i:s')
             ]
         ];
     } catch (PDOException $e) {
@@ -91,7 +81,7 @@ function sendMessage($senderId, $receiverId, $message, $type = 'text', $file = n
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $senderId = $_POST['sender_id'];
     $receiverId = $_POST['receiver_id'];
-    $message = $_POST['message'];
+    $message = $_POST['message'] ?? '';
     $type = $_POST['type'] ?? 'text';
     $file = isset($_FILES['file']) ? $_FILES['file'] : null;
 
