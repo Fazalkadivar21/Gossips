@@ -10,11 +10,22 @@ interface UserListProps {
   selectedUser: User | null;
   onSelectUser: (user: User) => void;
 }
+const getLastSeen = async (user_id: any): Promise<string | null> => {
+  const formData = new FormData();
+  formData.append('user_id',user_id);
+  const res = await api.post('/backend/getLastSeen.php', formData);
+  const last_active = res.data;
+  return last_active;
+}
 
-const getProfilePicture = (user_id: any) => {
-  const pic = api.post('/backend/getProfilePicture.php', { user_id });
+const getProfilePicture = async (user_id: any): Promise<string | null> => {
+  const formData = new FormData();
+  formData.append('user_id',user_id);
+  const res = await api.post('/backend/getProfilePicture.php', formData);
+  const pic = res.data;
   return pic;
 }
+
 export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -36,18 +47,25 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
           // Create a Map to store unique users by ID
           const uniqueUsers = new Map();
           
-          data.forEach((chat: any) => {
+          const userPromises = data.map(async (chat) => {
             if (!uniqueUsers.has(chat.other_user_id)) {
+              const [avatar, last_active] = await Promise.all([
+                getProfilePicture(chat.other_user_id),
+                getLastSeen(chat.other_user_id),
+              ]);
+
               uniqueUsers.set(chat.other_user_id, {
                 id: chat.other_user_id,
                 username: chat.other_user_username,
                 email: '',
                 isOnline: chat.is_online,
-                avatar: chat.profile_picture ? `http://localhost:5000/${chat.profile_picture}` : null,
-                lastSeen: chat.timestamp
+                avatar,
+                lastSeen: last_active,
               });
             }
           });
+        
+          await Promise.all(userPromises);
           
           setUsers(Array.from(uniqueUsers.values()));
         }
@@ -79,18 +97,25 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
         // Create a Map to store unique users by ID
         const uniqueUsers = new Map();
         
-        data.forEach((user: any) => {
+        const userPromises = data.map(async (user) => {
           if (!uniqueUsers.has(user.id)) {
+            const [avatar, last_active] = await Promise.all([
+              getProfilePicture(user.id),
+              getLastSeen(user.id),
+            ]);
+
             uniqueUsers.set(user.id, {
               id: user.id,
               username: user.username,
               email: '',
               isOnline: user.is_online,
-              avatar: user.profile_picture ? `http://localhost:5000/${user.profile_picture}` : null,
-              lastSeen: new Date(user.last_active)
+              avatar,
+              lastSeen: last_active,
             });
           }
         });
+      
+        await Promise.all(userPromises);
         
         setUsers(Array.from(uniqueUsers.values()));
       }
