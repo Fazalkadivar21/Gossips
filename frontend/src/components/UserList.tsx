@@ -26,11 +26,21 @@ const getProfilePicture = async (user_id: any): Promise<string | null> => {
   return pic;
 }
 
+const getLastMessage = async (user_id:any , other_user_id:any): Promise<string | null> => {
+  const formData = new FormData();
+  formData.append('sender_id',user_id);
+  formData.append('receiver_id',other_user_id);
+  const res = await api.post('/backend/getLastMessage.php', formData);
+  const msg = res.data;
+  return msg;
+}
+
 export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const { user: currentUser } = useAuth();
+  const [lastMessages, setLastMessages] = useState<{ userId: string, lastMessage: string }[]>([]);
 
   // Fetch chat list (recent conversations)
   useEffect(() => {
@@ -137,6 +147,32 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
+  // Get last message for a user
+  useEffect(() => {
+    const fetchLastMessages = async () => {
+      if (!currentUser) return;
+
+      // Create an array of promises using map()
+      const lastMessagesPromises = users.map(async (user) => {
+        const lastMessage = await getLastMessage(currentUser.id, user.id);
+        return {
+          userId: user.id,
+          lastMessage: lastMessage || 'No messages yet',
+        };
+      });
+
+      // Wait for all promises to resolve
+      const lastMessagesArray = await Promise.all(lastMessagesPromises);
+
+      // Update the state with the last messages array
+      setLastMessages(lastMessagesArray);
+    };
+
+  if (users.length > 0) {
+    fetchLastMessages();
+  }
+}, [users, currentUser]);
+  
   return (
     <div className="flex flex-col h-full bg-white dark:bg-discord-dark-800">
       <div className="p-3 bg-gray-100 dark:bg-discord-dark-800 border-b border-gray-200 dark:border-discord-dark-900">
@@ -212,8 +248,8 @@ export const UserList: React.FC<UserListProps> = ({ selectedUser, onSelectUser }
                       </span>
                     </div>
                     <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                      {user.isOnline ? 'online' : 'last seen recently'}
-                    </p>``
+                      {lastMessages.find((message) => message.userId === user.id)?.lastMessage || 'No messages yet'}
+                    </p>
                   </div>
                 </div>
               </motion.div>
