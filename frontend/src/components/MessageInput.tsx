@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Paperclip, Send, Smile } from 'lucide-react';
+import Picker from '@emoji-mart/react';
+import data from '@emoji-mart/data';
 
 interface MessageInputProps {
   onSendMessage: (content: string, type: 'text' | 'image' | 'file', file?: File) => void;
@@ -7,6 +9,18 @@ interface MessageInputProps {
 
 export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => {
   const [message, setMessage] = useState('');
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.ctrlKey && e.key === '/') {
+        e.preventDefault();
+        setShowEmojiPicker((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,11 +38,25 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => 
     }
   };
 
+  const addEmoji = (emoji: any) => {
+    setMessage((prev) => prev + emoji.native);
+  };
+
   return (
-    <div className="bg-gray-100 dark:bg-discord-dark-800 p-3">
+    <div className="relative bg-gray-100 dark:bg-discord-dark-800 p-3">
       <form onSubmit={handleSubmit} className="flex items-center space-x-2">
-        <div className="flex items-center space-x-2">
-          <Smile className="w-6 h-6 text-gray-500 dark:text-gray-400 cursor-pointer" />
+        <div className="flex items-center space-x-2 relative">
+          <div className="relative">
+            <Smile 
+              className="w-6 h-6 text-gray-500 dark:text-gray-400 cursor-pointer"
+              onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+            />
+            {showEmojiPicker && (
+              <div className="absolute bottom-10 left-0 z-50 bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+                <Picker data={data} onEmojiSelect={addEmoji} theme="dark" />
+              </div>
+            )}
+          </div>
           <label className="cursor-pointer">
             <input
               type="file"
@@ -55,4 +83,4 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage }) => 
       </form>
     </div>
   );
-}
+};

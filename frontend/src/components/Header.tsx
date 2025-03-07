@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Menu, Search, LogOut } from 'lucide-react';
+import { Menu, LogOut } from 'lucide-react';
 import { ThemeToggle } from './ThemeToggle';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -18,7 +18,6 @@ export const Header: React.FC = () => {
     <div className="bg-[#5865F2] dark:bg-[#36393f] text-white p-4 flex items-center justify-between relative">
       <h1 className="text-xl font-semibold">Gossips</h1>
       <div className="flex items-center space-x-4">
-        <Search className="w-5 h-5 cursor-pointer" />
         <ThemeToggle />
         <button
           onClick={() => setShowMenu(!showMenu)}
