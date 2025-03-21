@@ -1,4 +1,4 @@
-# Gossips - A Secure Chat Platform for Cat Lovers
+# Gossips - A Secure Chat Platform for Code Lovers
 
 Gossips is a secure, real-time chat application designed for cat lovers! Built with modern technologies, it ensures smooth communication through polling-based message fetching and secure password encryption.
 
@@ -34,7 +34,7 @@ Gossips is a secure, real-time chat application designed for cat lovers! Built w
 1. **Clone the repository:**
    ```sh
    git clone https://github.com/fazalkadivar21/Gossips.git
-   cd fazalkadivar21-Gossips
+   cd Gossips
    ```
 
 2. **Backend Configuration:**
@@ -75,5 +75,5 @@ This project is licensed under the MIT License.
 
 ---
 
-Enjoy chatting with fellow cat lovers! 🐱
+Enjoy chatting with fellow code lovers! 🐱
 
