@@ -3,6 +3,7 @@ import { User } from '../types';
 import { Phone, Video, MoreVertical } from 'lucide-react';
 import { useCall } from '../contexts/CallContext';
 import { motion } from 'framer-motion';
+import { formatLastSeen } from '../utils/dateUtils';
 
 interface ChatHeaderProps {
   user: User;
@@ -24,7 +25,7 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({ user }) => {
         <div>
           <h3 className="font-semibold text-gray-900 dark:text-gray-100">{user.username}</h3>
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            {user.isOnline ? 'online' : 'last seen recently'}
+          {user.isOnline ? 'online' : `Last seen ${formatLastSeen(new Date(user.lastSeen))}`}
           </p>
         </div>
       </div>
